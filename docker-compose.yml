@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_app_api
+    working_dir: /var/www/html
+    volumes:
+      - ./laravel_api:/var/www/html
+      - ./laravel_api/storage/logs:/var/www/html/storage/logs
+    ports:
+      - "8000:80"
+    depends_on:
+      - postgres
+    environment:
+      APP_ENV: local
+      APP_DEBUG: true
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: laravel_db
+      DB_USERNAME: laravel_user
+      DB_PASSWORD: secret
+    # Exécuter les commandes au démarrage
+    command: >
+      sh -c "
+      chown -R www-data:www-data /var/www/html &&
+      chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache &&
+      apache2-foreground
+      "
+
+  postgres:
+    image: postgres:14
+    container_name: laravel_postgres
+    environment:
+      POSTGRES_DB: laravel_db
+      POSTGRES_USER: laravel_user
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
