@@ -6,7 +6,7 @@ use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
-
+use OpenApi\Attributes as OA;
 
 class AuthController extends Controller
 {
@@ -17,36 +17,35 @@ class AuthController extends Controller
         $this->authService = $authService;
     }
 
-    /**
-     * @OA\Post(
-     *     path="/login",
-     *     summary="Connexion utilisateur",
-     *     tags={"Authentication"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"email","password"},
-     *             @OA\Property(property="email", type="string", format="email"),
-     *             @OA\Property(property="password", type="string", format="password")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Connexion réussie",
-     *         @OA\JsonContent(ref="#/components/schemas/LoginResponse")
-     *     ),
-     *     @OA\Response(
-     *         response=401,
-     *         description="Échec de connexion",
-     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Erreur de validation",
-     *         @OA\JsonContent(ref="#/components/schemas/ErrorResponse")
-     *     )
-     * )
-     */
+    #[OA\Post(
+        path: '/login',
+        operationId: 'login',
+        summary: 'Connexion utilisateur',
+        description: 'Authentifie un utilisateur et retourne un token JWT',
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Credentials de l\'utilisateur',
+            content: new OA\JsonContent(ref: '#/components/schemas/LoginRequest')
+        ),
+        tags: ['Authentication'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Connexion réussie',
+                content: new OA\JsonContent(ref: '#/components/schemas/LoginResponse')
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Échec de connexion',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Erreur de validation',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -92,9 +91,42 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * API d'inscription
-     */
+    #[OA\Post(
+        path: '/register',
+        operationId: 'register',
+        summary: 'Inscription utilisateur',
+        description: 'Crée un nouveau compte utilisateur',
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Données d\'inscription',
+            content: new OA\JsonContent(ref: '#/components/schemas/RegisterRequest')
+        ),
+        tags: ['Authentication'],
+        responses: [
+            new OA\Response(
+                response: 201,
+                description: 'Inscription réussie',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'message', type: 'string'),
+                        new OA\Property(property: 'token', type: 'string'),
+                        new OA\Property(property: 'user', ref: '#/components/schemas/User')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Erreur de validation',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Erreur lors de l\'inscription',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -131,9 +163,47 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * API de modification de profil
-     */
+    #[OA\Put(
+        path: '/profile',
+        operationId: 'updateProfile',
+        summary: 'Mettre à jour le profil',
+        description: 'Met à jour les informations du profil utilisateur',
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Données de mise à jour',
+            content: new OA\JsonContent(ref: '#/components/schemas/UpdateProfileRequest')
+        ),
+        tags: ['User'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Profil mis à jour avec succès',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'message', type: 'string'),
+                        new OA\Property(property: 'user', ref: '#/components/schemas/User')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Erreur de validation',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Erreur lors de la mise à jour',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Non authentifié',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function updateProfile(Request $request)
     {
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -167,9 +237,31 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * API de déconnexion
-     */
+    #[OA\Post(
+        path: '/logout',
+        operationId: 'logout',
+        summary: 'Déconnexion',
+        description: 'Déconnecte l\'utilisateur et invalide le token',
+        security: [['bearerAuth' => []]],
+        tags: ['Authentication'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Déconnexion réussie',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'message', type: 'string')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Non authentifié',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function logout()
     {
         \Illuminate\Support\Facades\Auth::logout();
@@ -180,9 +272,33 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * API de rafraîchissement de token
-     */
+    #[OA\Post(
+        path: '/refresh',
+        operationId: 'refreshToken',
+        summary: 'Rafraîchir le token',
+        description: 'Génère un nouveau token JWT',
+        security: [['bearerAuth' => []]],
+        tags: ['Authentication'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Token rafraîchi avec succès',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'token', type: 'string'),
+                        new OA\Property(property: 'token_type', type: 'string'),
+                        new OA\Property(property: 'expires_in', type: 'integer')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Non authentifié',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function refresh()
     {
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -196,9 +312,51 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * API pour réinitialiser les tentatives (admin seulement)
-     */
+    #[OA\Post(
+        path: '/reset-tentatives',
+        operationId: 'resetTentatives',
+        summary: 'Réinitialiser les tentatives de connexion',
+        description: 'Réinitialise les tentatives de connexion échouées pour une IP (Admin seulement)',
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            description: 'Adresse IP à réinitialiser',
+            content: new OA\JsonContent(
+                required: ['ip'],
+                properties: [
+                    new OA\Property(property: 'ip', type: 'string', format: 'ipv4')
+                ]
+            )
+        ),
+        tags: ['Admin'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Tentatives réinitialisées',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'message', type: 'string')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'IP requise',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            ),
+            new OA\Response(
+                response: 403,
+                description: 'Accès non autorisé',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Non authentifié',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function resetTentatives(Request $request)
     {
         $user = \Illuminate\Support\Facades\Auth::user();
@@ -227,7 +385,31 @@ class AuthController extends Controller
         ], 400);
     }
 
-
+    #[OA\Get(
+        path: '/me',
+        operationId: 'getUser',
+        summary: 'Obtenir l\'utilisateur courant',
+        description: 'Retourne les informations de l\'utilisateur authentifié',
+        security: [['bearerAuth' => []]],
+        tags: ['User'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Utilisateur récupéré avec succès',
+                content: new OA\JsonContent(
+                    properties: [
+                        new OA\Property(property: 'success', type: 'boolean'),
+                        new OA\Property(property: 'user', ref: '#/components/schemas/User')
+                    ]
+                )
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Non authentifié',
+                content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')
+            )
+        ]
+    )]
     public function me()
     {
         try {
@@ -244,5 +426,4 @@ class AuthController extends Controller
             ], 401);
         }
     }
-    
 }

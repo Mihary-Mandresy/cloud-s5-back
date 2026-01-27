@@ -76,3 +76,25 @@ php artisan migrate
 
 # 11. Quitter le conteneur
 exit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+composer require kreait/firebase-php:^7.0
+composer require google/cloud-firestore:^1.47
+pecl install grpc
+
