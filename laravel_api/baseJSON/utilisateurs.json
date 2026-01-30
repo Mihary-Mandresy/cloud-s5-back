@@ -1,0 +1,44 @@
+[
+  {
+    "id": "3",
+    "email": "admin@example.com",
+    "motDePasse": "admin123",
+    "roleId": "3",
+    "nom": "Admin User",
+    "dateInscription": "2026-01-27T06:21:56Z",
+    "estBloque": false,
+    "tentativesConnexion": 0,
+    "derniereTentative": null,
+    "firebaseUid": null,
+    "createdAt": "2026-01-27T06:21:55Z",
+    "updatedAt": "2026-01-27T06:21:55Z"
+  },
+  {
+    "id": "4",
+    "email": "user@example.com",
+    "motDePasse": "user123",
+    "roleId": "2",
+    "nom": "Regular User",
+    "dateInscription": "2026-01-27T06:21:56Z",
+    "estBloque": false,
+    "tentativesConnexion": 0,
+    "derniereTentative": null,
+    "firebaseUid": null,
+    "createdAt": "2026-01-27T06:21:55Z",
+    "updatedAt": "2026-01-27T06:21:55Z"
+  },
+  {
+    "id": "5",
+    "email": "tech@example.com",
+    "motDePasse": "tech123",
+    "roleId": "3",
+    "nom": "Technicien",
+    "dateInscription": "2026-01-27T06:21:56Z",
+    "estBloque": false,
+    "tentativesConnexion": 0,
+    "derniereTentative": null,
+    "firebaseUid": null,
+    "createdAt": "2026-01-27T06:21:55Z",
+    "updatedAt": "2026-01-27T06:21:55Z"
+  }
+]

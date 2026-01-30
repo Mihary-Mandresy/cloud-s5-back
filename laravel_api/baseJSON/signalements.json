@@ -1,0 +1,74 @@
+[
+  {
+    "id": "1",
+    "titre": "Route endommagée",
+    "description": "Nid de poule important sur la route principale",
+    "latitude": 48.856614,
+    "longitude": 2.3522219,
+    "dateCreation": "2026-01-27T06:22:35Z",
+    "dateModification": null,
+    "statut": 1,
+    "surfaceM2": 5.5,
+    "budget": 1500.0,
+    "avancement": 0.0,
+    "entrepriseResponsable": "Entreprise A",
+    "utilisateurId": "3",
+    "synchroniseFirebase": false,
+    "createdAt": "2026-01-27T06:22:34Z",
+    "updatedAt": "2026-01-27T06:22:34Z",
+    "historique": [
+      {
+        "dateChargement": "2026-01-27T06:22:35Z",
+        "statut": 1
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "titre": "Éclairage public défectueux",
+    "description": "Lampadaire non fonctionnel dans la rue des Lilas",
+    "latitude": 48.8583701,
+    "longitude": 2.2944813,
+    "dateCreation": "2026-01-27T06:22:35Z",
+    "dateModification": null,
+    "statut": 2,
+    "surfaceM2": null,
+    "budget": 800.0,
+    "avancement": 50.0,
+    "entrepriseResponsable": "Entreprise B",
+    "utilisateurId": "4",
+    "synchroniseFirebase": false,
+    "createdAt": "2026-01-27T06:22:35Z",
+    "updatedAt": "2026-01-27T06:22:35Z",
+    "historique": [
+      {
+        "dateChargement": "2026-01-27T06:22:35Z",
+        "statut": 2
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "titre": "Déchets sauvages",
+    "description": "Amas de déchets près du parc",
+    "latitude": 48.8462207,
+    "longitude": 2.3371608,
+    "dateCreation": "2026-01-27T06:22:35Z",
+    "dateModification": null,
+    "statut": 3,
+    "surfaceM2": 12.3,
+    "budget": 500.0,
+    "avancement": 100.0,
+    "entrepriseResponsable": "Entreprise C",
+    "utilisateurId": "3",
+    "synchroniseFirebase": true,
+    "createdAt": "2026-01-27T06:22:35Z",
+    "updatedAt": "2026-01-27T06:22:35Z",
+    "historique": [
+      {
+        "dateChargement": "2026-01-27T06:22:35Z",
+        "statut": 3
+      }
+    ]
+  }
+]

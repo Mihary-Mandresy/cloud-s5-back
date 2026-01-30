@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "nom": "Entreprise A",
+    "createdAt": "2026-01-27T06:05:12Z",
+    "updatedAt": "2026-01-27T06:05:12Z"
+  },
+  {
+    "id": "2",
+    "nom": "Entreprise B",
+    "createdAt": "2026-01-27T06:05:13Z",
+    "updatedAt": "2026-01-27T06:05:13Z"
+  },
+  {
+    "id": "3",
+    "nom": "Entreprise C",
+    "createdAt": "2026-01-27T06:05:13Z",
+    "updatedAt": "2026-01-27T06:05:13Z"
+  },
+  {
+    "id": "4",
+    "nom": "Entreprise D",
+    "createdAt": "2026-01-27T06:05:13Z",
+    "updatedAt": "2026-01-27T06:05:13Z"
+  },
+  {
+    "id": "5",
+    "nom": "Entreprise E",
+    "createdAt": "2026-01-27T06:05:13Z",
+    "updatedAt": "2026-01-27T06:05:13Z"
+  }
+]

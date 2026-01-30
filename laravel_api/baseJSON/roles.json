@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "libelle": "visiteur",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "2", 
+    "libelle": "utilisateur",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "3",
+    "libelle": "manager",
+    "createdAt": null,
+    "updatedAt": null
+  }
+]

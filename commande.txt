@@ -95,6 +95,7 @@ exit
 
 
 composer require kreait/firebase-php:^7.0
-composer require google/cloud-firestore:^1.47
+composer require google/cloud-firestore:^1.47 --ignore-platform-req=ext-grpc
 pecl install grpc
+
 
