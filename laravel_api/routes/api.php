@@ -11,7 +11,7 @@ Route::prefix('sync')->group(function () {
     Route::get('/compare', [FirebaseSyncController::class, 'compare']);
     Route::get('/statistics', [FirebaseSyncController::class, 'statistics']);
     Route::get('/check', [FirebaseSyncController::class, 'checkConnection']);
-    Route::post('/all', [FirebaseSyncController::class, 'synchronizeAll']);
+    Route::get('/all', [FirebaseSyncController::class, 'synchronizeAll']);
     Route::post('/to-firebase', [FirebaseSyncController::class, 'syncToFirebase']);
     Route::post('/from-firebase', [FirebaseSyncController::class, 'syncFromFirebase']);
 });
@@ -48,8 +48,8 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
-    
-    
+
+
 
     // Route admin seulement
     Route::middleware(['role:manager'])->group(function () {

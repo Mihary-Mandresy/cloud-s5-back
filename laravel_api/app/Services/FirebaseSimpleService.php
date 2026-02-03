@@ -9,7 +9,7 @@ class FirebaseSimpleService
 {
     private $projectId = 'braided-period-423115-r3';
     private $credentials;
-    
+
     public function __construct()
     {
         $this->credentials = json_decode(
@@ -18,7 +18,7 @@ class FirebaseSimpleService
         );
     }
 
-    public function getProjectId() 
+    public function getProjectId()
     {
         return $this->projectId;
     }
@@ -27,21 +27,21 @@ class FirebaseSimpleService
     {
         return $this->getAccessToken();
     }
-    
-    private function getAccessToken()
+
+    public function getAccessToken()
     {
         return Cache::remember('firebase_access_token', 3500, function () {
             $jwt = $this->createSimpleJWT();
-            
+
             $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
                 'assertion' => $jwt
             ]);
-            
+
             if ($response->successful()) {
                 return $response->json()['access_token'];
             }
-            
+
             throw new \Exception('Impossible d\'obtenir le token d\'accès: ' . $response->body());
         });
     }
@@ -52,7 +52,7 @@ class FirebaseSimpleService
             'alg' => 'RS256',
             'typ' => 'JWT'
         ]);
-        
+
         $now = time();
         $payload = json_encode([
             'iss' => $this->credentials['client_email'],
@@ -61,51 +61,51 @@ class FirebaseSimpleService
             'exp' => $now + 3600,
             'iat' => $now
         ]);
-        
+
         $encodedHeader = $this->base64UrlEncode($header);
         $encodedPayload = $this->base64UrlEncode($payload);
-        
+
         $signature = '';
         $dataToSign = $encodedHeader . '.' . $encodedPayload;
-        
+
         $privateKey = str_replace(['\n', '\r'], "\n", $this->credentials['private_key']);
-        
+
         if (!str_contains($privateKey, 'BEGIN PRIVATE KEY')) {
-            $privateKey = "-----BEGIN PRIVATE KEY-----\n" . 
-                         chunk_split($privateKey, 64, "\n") . 
+            $privateKey = "-----BEGIN PRIVATE KEY-----\n" .
+                         chunk_split($privateKey, 64, "\n") .
                          "-----END PRIVATE KEY-----\n";
         }
-        
+
         openssl_sign(
             $dataToSign,
             $signature,
             $privateKey,
             'SHA256'
         );
-        
+
         $encodedSignature = $this->base64UrlEncode($signature);
-        
+
         return $encodedHeader . '.' . $encodedPayload . '.' . $encodedSignature;
     }
-    
+
     private function base64UrlEncode($data)
     {
         return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
     }
-    
+
     public function verifyToken()
     {
         try {
             $token = $this->getAccessToken();
             $url = "https://oauth2.googleapis.com/tokeninfo?access_token=" . urlencode($token);
-            
+
             $response = Http::get($url);
-            
+
             return [
                 'valid' => $response->successful(),
                 'response' => $response->json()
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'valid' => false,
@@ -113,13 +113,13 @@ class FirebaseSimpleService
             ];
         }
     }
-    
+
     public function getCollections()
     {
         $token = $this->getAccessToken();
-        
+
         $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents:listCollectionIds";
-        
+
         $response = Http::withToken($token)
             ->withHeaders([
                 'Content-Type' => 'application/json',
@@ -127,42 +127,42 @@ class FirebaseSimpleService
             ])
             ->post($url, [
                 'pageSize' => 10
-            ]); 
-        
+            ]);
+
         if ($response->successful()) {
             return $response->json();
         }
-        
+
         if ($response->status() === 401) {
             Cache::forget('firebase_access_token');
             throw new \Exception('Token invalide. Veuillez réessayer.');
         }
-        
+
         throw new \Exception('Erreur Firestore (' . $response->status() . '): ' . $response->body());
     }
-    
+
     public function createDocument($collection, $data)
     {
         $token = $this->getAccessToken();
-        
+
         $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents/{$collection}";
-        
+
         $response = Http::withToken($token)
             ->withHeaders(['Content-Type' => 'application/json'])
             ->post($url, [
                 'fields' => $this->formatFields($data)
             ]);
-        
+
         if ($response->successful()) {
             return $response->json();
         }
-        
+
         throw new \Exception('Erreur création document: ' . $response->body());
     }
     public function formatFields($data)
     {
         $fields = [];
-        
+
         foreach ($data as $key => $value) {
             if (is_string($value)) {
                 $fields[$key] = ['stringValue' => $value];
@@ -178,28 +178,28 @@ class FirebaseSimpleService
                 $fields[$key] = ['stringValue' => (string) $value];
             }
         }
-        
+
         return $fields;
     }
-    
+
     public function testConnection()
     {
         try {
             if (empty($this->credentials['private_key']) || empty($this->credentials['client_email'])) {
                 throw new \Exception('Credentials incomplets');
             }
-            
+
             $token = $this->getAccessToken();
-            
+
             $tokenInfo = $this->verifyToken();
-            
+
             $simpleTestUrl = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents:listCollectionIds";
             $testResponse = Http::withToken($token)
                 ->withHeaders(['Content-Type' => 'application/json'])
                 ->post($simpleTestUrl, [
                     'pageSize' => 10
                 ]);
-            
+
             return [
                 'success' => true,
                 'project_id' => $this->projectId,
@@ -208,7 +208,7 @@ class FirebaseSimpleService
                 'firestore_accessible' => $testResponse->successful(),
                 'firestore_status' => $testResponse->status()
             ];
-            
+
         } catch (\Exception $e) {
             return [
                 'success' => false,
@@ -219,9 +219,9 @@ class FirebaseSimpleService
     public function getDocuments($collection, $filters = [])
     {
         $token = $this->getAccessToken();
-        
+
         $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents:runQuery";
-        
+
         $query = [
             'structuredQuery' => [
                 'from' => [
@@ -229,10 +229,10 @@ class FirebaseSimpleService
                 ]
             ]
         ];
-        
+
         if (!empty($filters)) {
             $where = [];
-            
+
             foreach ($filters as $field => $value) {
                 $where[] = [
                     'fieldFilter' => [
@@ -244,7 +244,7 @@ class FirebaseSimpleService
                     ]
                 ];
             }
-            
+
             if (count($where) === 1) {
                 $query['structuredQuery']['where'] = $where[0];
             } elseif (count($where) > 1) {
@@ -256,77 +256,77 @@ class FirebaseSimpleService
                 ];
             }
         }
-        
+
         $response = Http::withToken($token)
             ->withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json'
             ])
             ->post($url, $query);
-        
+
         if ($response->successful()) {
             $documents = [];
             $data = $response->json();
-            
+
             foreach ($data as $item) {
                 if (isset($item['document'])) {
                     $doc = $this->parseDocument($item['document']);
                     $documents[] = $doc;
                 }
             }
-            
+
             return $documents;
         }
-        
+
         if ($response->status() === 401) {
             Cache::forget('firebase_access_token');
             throw new \Exception('Token invalide. Veuillez réessayer.');
         }
-        
+
         throw new \Exception('Erreur récupération documents (' . $response->status() . '): ' . $response->body());
     }
     public function getDocumentsWithPagination($collection, $limit = 50, $nextPageToken = null)
     {
         $token = $this->getAccessToken();
-        
+
         $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents/{$collection}";
-        
+
         $params = [
             'pageSize' => $limit,
-            'orderBy' => '__name__' 
+            'orderBy' => '__name__'
         ];
-        
+
         if ($nextPageToken) {
             $params['pageToken'] = $nextPageToken;
         }
-        
+
         $response = Http::withToken($token)
             ->withHeaders([
                 'Accept' => 'application/json'
             ])
             ->get($url, $params);
-        
+
         if ($response->successful()) {
             $data = $response->json();
             $documents = [];
-            
+
             if (isset($data['documents'])) {
                 foreach ($data['documents'] as $docData) {
                     $documents[] = $this->parseDocument($docData);
                 }
             }
-            
+
             return [
                 'documents' => $documents,
                 'nextPageToken' => $data['nextPageToken'] ?? null
             ];
         }
-        
+
         if ($response->status() === 401) {
             Cache::forget('firebase_access_token');
             throw new \Exception('Token invalide. Veuillez réessayer.');
         }
-        
+
         throw new \Exception('Erreur récupération documents (' . $response->status() . '): ' . $response->body());
     }
 
@@ -362,13 +362,13 @@ class FirebaseSimpleService
             'updateTime' => $document['updateTime'] ?? null,
             'fields' => []
         ];
-        
+
         if (isset($document['fields'])) {
             foreach ($document['fields'] as $fieldName => $fieldValue) {
                 $result['fields'][$fieldName] = $this->parseFieldValue($fieldValue);
             }
         }
-        
+
         return $result;
     }
 
@@ -379,7 +379,7 @@ class FirebaseSimpleService
     {
         $key = array_keys($fieldValue)[0] ?? null;
         $value = $fieldValue[$key] ?? null;
-        
+
         switch ($key) {
             case 'stringValue':
                 return $value;
