@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Cache;
 
 class FirebaseSimpleService
 {
-    private $projectId = 'braided-period-423115-r3';
+    private $projectId = 'arabe-8144d';
     private $credentials;
 
     public function __construct()
@@ -56,7 +56,7 @@ class FirebaseSimpleService
         $now = time();
         $payload = json_encode([
             'iss' => $this->credentials['client_email'],
-            'scope' => 'https://www.googleapis.com/auth/datastore',
+            'scope' => 'https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/datastore',
             'aud' => 'https://oauth2.googleapis.com/token',
             'exp' => $now + 3600,
             'iat' => $now

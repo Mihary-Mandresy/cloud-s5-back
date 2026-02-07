@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Utilisateur;
+use App\Models\Photo;
 use App\Models\Signalement;
 use App\Models\Entreprise;
 use App\Models\HistoSignalement;
@@ -95,41 +96,36 @@ class FirebaseSyncService
             'sample' => !empty($firebaseUsers) ? $firebaseUsers[0] : 'none'
         ]);
 
-        $localByFirebaseId = [];
         $localByEmail = [];
-
         foreach ($localUsers as $user) {
-            if ($user->firebase_uid) {
-                $localByFirebaseId[$user->firebase_uid] = $user;
-            }
             if ($user->email) {
-                $localByEmail[strtolower($user->email)] = $user;
+                $key = strtolower(trim($user->email));
+                $localByEmail[$key] = $user;
             }
         }
 
-        $firebaseIds = array_column($firebaseUsers, 'id');
-        $localIds = $localUsers->pluck('id')->map(function($id) {
-            return (string) $id;
-        })->toArray();
+        $firebaseByEmail = [];
+        foreach ($firebaseUsers as $doc) {
+            $email = strtolower(trim($doc['data']['email'] ?? $doc['data']['Email'] ?? ''));
+            if ($email) {
+                $firebaseByEmail[$email] = $doc;
+            }
+        }
 
-        $missingInFirebase = $localUsers->filter(function($user) use ($firebaseIds) {
-            return !$user->firebase_uid || !in_array($user->firebase_uid, $firebaseIds);
-        })->values();
+        $missingInFirebase = [];
+        foreach ($localUsers as $user) {
+            if ($user->email) {
+                $emailKey = strtolower(trim($user->email));
+                if (!isset($firebaseByEmail[$emailKey])) {
+                    $missingInFirebase[] = $user;
+                }
+            }
+        }
 
         $missingInLocal = [];
         foreach ($firebaseUsers as $doc) {
-            $firebaseId = $doc['id'];
-            $email = strtolower($doc['data']['email'] ?? $doc['data']['Email'] ?? '');
-
-            $exists = false;
-            if (isset($localByFirebaseId[$firebaseId])) {
-                $exists = true;
-            }
-            elseif ($email && isset($localByEmail[$email])) {
-                $exists = true;
-            }
-
-            if (!$exists) {
+            $email = strtolower(trim($doc['data']['email'] ?? $doc['data']['Email'] ?? ''));
+            if ($email && !isset($localByEmail[$email])) {
                 $missingInLocal[] = $doc;
             }
         }
@@ -139,59 +135,63 @@ class FirebaseSyncService
             'total_firebase' => count($firebaseUsers),
             'missing_in_firebase' => count($missingInFirebase),
             'missing_in_local' => count($missingInLocal),
-            'local_with_firebase_uid' => count($localByFirebaseId)
+            'emails_locaux' => array_keys($localByEmail),
+            'emails_firebase' => array_keys($firebaseByEmail)
         ]);
 
         return [
             'local_count' => count($localUsers),
             'firebase_count' => count($firebaseUsers),
-            'local_ids' => $localIds,
-            'firebase_ids' => $firebaseIds,
-            'missing_in_firebase' => $missingInFirebase->toArray(),
+            'missing_in_firebase' => $missingInFirebase,
+            'missing_in_local' => $missingInLocal,
+            'local_emails' => array_keys($localByEmail),
+            'firebase_emails' => array_keys($firebaseByEmail)
+        ];
+    }
+
+    private function compareSignalements()
+    {
+        $localSignalements = Signalement::all(['id', 'titre', 'description'])->toArray();
+        
+        $firebaseDocs = $this->getFirebaseDocuments('signalements');
+        
+        $localForComparison = [];
+        foreach ($localSignalements as $signalement) {
+            $key = strtolower(trim($signalement['titre'])) . '|' . strtolower(trim($signalement['description']));
+            $localForComparison[$key] = $signalement;
+        }
+        
+        $firebaseForComparison = [];
+        foreach ($firebaseDocs as $doc) {
+            $data = $doc['data'] ?? $doc;
+            $titre = strtolower(trim($data['titre'] ?? ''));
+            $description = strtolower(trim($data['description'] ?? ''));
+            $key = $titre . '|' . $description;
+            $firebaseForComparison[$key] = $doc;
+        }
+        
+        $missingInFirebase = [];
+        foreach ($localForComparison as $key => $signalement) {
+            if (!isset($firebaseForComparison[$key])) {
+                $missingInFirebase[] = $signalement;
+            }
+        }
+        
+        $missingInLocal = [];
+        foreach ($firebaseForComparison as $key => $doc) {
+            if (!isset($localForComparison[$key])) {
+                $missingInLocal[] = $doc;
+            }
+        }
+        
+        return [
+            'local_count' => count($localSignalements),
+            'firebase_count' => count($firebaseDocs),
+            'missing_in_firebase' => $missingInFirebase,
             'missing_in_local' => $missingInLocal
         ];
     }
 
-    /**
-     * Compare les signalements
-     */
-    private function compareSignalements()
-    {
-        $localSignalements = Signalement::with(['historiques', 'utilisateur'])
-            ->get(['id', 'titre', 'description', 'statut', 'synchronise_firebase', 'utilisateur_id'])
-            ->keyBy('id');
-
-        $firebaseSignalements = $this->getFirebaseDocuments('signalements');
-
-        $localIds = $localSignalements->pluck('id')->map(function($id) {
-            return (string) $id;
-        })->toArray();
-
-        $firebaseIds = array_column($firebaseSignalements, 'id');
-
-        // CORRECTION : Supprimez la vérification de synchronise_firebase
-        $missingInFirebase = $localSignalements->filter(function($signalement) use ($firebaseIds) {
-            return !in_array((string) $signalement->id, $firebaseIds);
-            // Supprimez: && !$signalement->synchronise_firebase
-        })->values();
-
-        $missingInLocal = array_filter($firebaseSignalements, function($doc) use ($localIds) {
-            return !in_array($doc['id'], $localIds);
-        });
-
-        return [
-            'local_count' => $localSignalements->count(),
-            'firebase_count' => count($firebaseSignalements),
-            'local_ids' => $localIds,
-            'firebase_ids' => $firebaseIds,
-            'missing_in_firebase' => $missingInFirebase->toArray(),
-            'missing_in_local' => array_values($missingInLocal)
-        ];
-    }
-
-    /**
-     * Compare les entreprises
-     */
     private function compareEntreprises()
     {
         $localEntreprises = Entreprise::all(['id', 'nom'])->keyBy('id');
@@ -220,10 +220,6 @@ class FirebaseSyncService
             'missing_in_local' => array_values($missingInLocal)
         ];
     }
-
-    /**
-     * Compare les rôles
-     */
     private function compareRoles()
     {
         $localRoles = Role::all(['id', 'libelle'])->keyBy('id');
@@ -253,21 +249,15 @@ class FirebaseSyncService
         ];
     }
 
-    /**
-     * Récupère les documents d'une collection Firebase
-     */
     private function getFirebaseDocuments($collection)
     {
         try {
-            // Utiliser la méthode getDocuments si disponible, sinon getCollections
             if (method_exists($this->firebaseService, 'getDocuments')) {
                 $documents = $this->firebaseService->getDocuments($collection);
             } else {
-                // Fallback: utiliser runQuery pour récupérer tous les documents
                 $documents = $this->fetchAllFirebaseDocuments($collection);
             }
 
-            // Normaliser les documents pour avoir un format cohérent
             $normalized = [];
             foreach ($documents as $doc) {
                 if (isset($doc['id'])) {
@@ -289,9 +279,6 @@ class FirebaseSyncService
         }
     }
 
-    /**
-     * Récupère tous les documents d'une collection Firebase
-     */
     private function fetchAllFirebaseDocuments($collection)
     {
         $token = $this->firebaseService->getAccessToken();
@@ -381,14 +368,25 @@ class FirebaseSyncService
         try {
             Log::info("Début synchronisation complète");
 
+            // Log 1: Avant sync
+            $localCountBefore = Signalement::count();
+            Log::info("Signalements locaux avant sync", ['count' => $localCountBefore]);
+
             $results = [
                 'local_to_firebase' => $this->syncLocalToFirebase(),
                 'firebase_to_local' => $this->syncFirebaseToLocal(),
                 'timestamp' => now()->toISOString()
             ];
 
-            // Vérifier si la synchronisation a réussi
+            $localCountAfter = Signalement::count();
+            Log::info("", ['count' => $localCountAfter]);
+
             $check = $this->compareData();
+
+            Log::info("Vérification après sync", [
+                'synchronised' => $check['success'] && $check['comparison']['summary']['total']['synchronised'],
+                'total_missing' => $check['comparison']['summary']['total']['total_missing']
+            ]);
 
             if ($check['success'] && $check['comparison']['summary']['total']['synchronised']) {
                 DB::commit();
@@ -398,17 +396,27 @@ class FirebaseSyncService
                     'success' => true,
                     'message' => 'Synchronisation réussie',
                     'results' => $results,
-                    'verified' => true
+                    'verified' => true,
+                    'local_counts' => [
+                        'before' => $localCountBefore,
+                        'after' => $localCountAfter
+                    ]
                 ];
             } else {
                 DB::rollBack();
-                Log::error("Synchronisation incomplète après vérification");
+                Log::error("Synchronisation incomplète après vérification", [
+                    'comparison' => $check['comparison']['summary']
+                ]);
 
                 return [
                     'success' => false,
                     'message' => 'Synchronisation incomplète',
                     'results' => $results,
-                    'verification' => $check
+                    'verification' => $check,
+                    'local_counts' => [
+                        'before' => $localCountBefore,
+                        'after' => $localCountAfter
+                    ]
                 ];
             }
 
@@ -484,9 +492,6 @@ class FirebaseSyncService
         return ['synced' => $synced, 'failed' => $failed, 'total' => count($missingInFirebase)];
     }
 
-    /**
-     * Synchronise les signalements locaux vers Firebase
-     */
     private function syncLocalSignalementsToFirebase()
     {
         $comparison = $this->compareSignalements();
@@ -496,14 +501,13 @@ class FirebaseSyncService
 
         foreach ($missingInFirebase as $signalement) {
             try {
-
+                // Récupérer le signalement complet
                 $signalementModel = Signalement::with(['historiques', 'utilisateur'])
                     ->find($signalement['id']);
 
                 if (!$signalementModel) continue;
 
                 $signalementData = [
-                    'id' => (string) $signalementModel->id,
                     'titre' => $signalementModel->titre,
                     'description' => $signalementModel->description,
                     'latitude' => $signalementModel->latitude,
@@ -519,40 +523,23 @@ class FirebaseSyncService
                     'created_at' => $signalementModel->created_at?->toISOString(),
                     'updated_at' => $signalementModel->updated_at?->toISOString()
                 ];
-                Log::info("Tentative création Firebase", [
-                    'collection' => 'signalements',
-                    'id' => $signalementModel->id,
-                    'data' => $signalementData
-                ]);
 
-                // Ajouter l'historique si disponible
-                if ($signalementModel->historiques->isNotEmpty()) {
-                    $signalementData['historique'] = $signalementModel->historiques->map(function($histo) {
-                        return [
-                            'date_chargement' => $histo->date_chargement?->toISOString(),
-                            'statut' => $histo->statut
-                        ];
-                    })->toArray();
-                }
+                // IMPORTANT: Laisser Firebase générer un ID auto
+                $this->createFirebaseDocumentAutoId('signalements', $signalementData);
 
-                // Créer dans Firebase
-                $result = $this->createFirebaseDocument('signalements', (string) $signalementModel->id, $signalementData);
-
-                Log::info("Création réussie", ['result' => $result]);
-
-                // Marquer comme synchronisé localement
                 $signalementModel->update(['synchronise_firebase' => true]);
 
                 $synced++;
-                Log::info("Signalement synchronisé vers Firebase", ['id' => $signalementModel->id]);
+                Log::info("Signalement synchronisé vers Firebase", [
+                    'id' => $signalementModel->id,
+                    'titre' => $signalementModel->titre
+                ]);
 
             } catch (\Exception $e) {
                 $failed++;
-                Log::error("Erreur détaillée synchronisation signalement", [
-                    'id' => $signalementModel->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(), // ← Ajouter la stack trace
-                    'data_size' => count($signalementData)
+                Log::error("Erreur synchronisation signalement", [
+                    'id' => $signalement['id'],
+                    'error' => $e->getMessage()
                 ]);
             }
         }
@@ -560,9 +547,26 @@ class FirebaseSyncService
         return ['synced' => $synced, 'failed' => $failed, 'total' => count($missingInFirebase)];
     }
 
-    /**
-     * Synchronise les entreprises locales vers Firebase
-     */
+    private function createFirebaseDocumentAutoId($collection, $data)
+    {
+        $token = $this->firebaseService->getAccessToken();
+        $projectId = $this->firebaseService->getProjectId();
+
+        $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/{$collection}";
+
+        $response = \Illuminate\Support\Facades\Http::withToken($token)
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post($url, [
+                'fields' => $this->formatForFirestore($data)
+            ]);
+
+        if (!$response->successful()) {
+            throw new \Exception('Erreur création document: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
     private function syncLocalEntreprisesToFirebase()
     {
         $comparison = $this->compareEntreprises();
@@ -903,23 +907,19 @@ class FirebaseSyncService
             try {
                 $data = $doc['data'] ?? $doc;
 
-                // Vérifier si l'utilisateur existe
                 $utilisateurId = $data['utilisateur_id'] ?? null;
                 $utilisateur = null;
 
                 if ($utilisateurId) {
-                    // Chercher par firebase_uid d'abord, puis par id
                     $utilisateur = Utilisateur::where('firebase_uid', $utilisateurId)
-                        ->orWhere('id', $utilisateurId)
                         ->first();
                 }
 
-                // Créer le signalement
                 $signalement = Signalement::create([
                     'titre' => $data['titre'] ?? '',
                     'description' => $data['description'] ?? '',
-                    'latitude' => $data['latitude'] ?? 0,
-                    'longitude' => $data['longitude'] ?? 0,
+                    'latitude' => $data['position']['latitude'] ?? $data['latitude'] ?? 0,
+                    'longitude' => $data['position']['longitude'] ?? $data['longitude'] ?? 0,
                     'date_creation' => isset($data['date_creation']) ?
                         \Carbon\Carbon::parse($data['date_creation']) : now(),
                     'date_modification' => isset($data['date_modification']) ?
@@ -932,6 +932,41 @@ class FirebaseSyncService
                     'utilisateur_id' => $utilisateur ? $utilisateur->id : null,
                     'synchronise_firebase' => true
                 ]);
+
+                // Gérer les photos
+                if (isset($data['photos']) && is_array($data['photos'])) {
+                    foreach ($data['photos'] as $index => $photoData) {
+                        if (!empty($photoData)) {
+                            // Extraire le type MIME si présent dans le base64
+                            $mimeType = 'image/jpeg'; // Par défaut
+                            $base64String = $photoData;
+                            
+                            if (strpos($photoData, 'data:') === 0) {
+                                // Extraire le type MIME: data:image/jpeg;base64,/9j/4AAQ...
+                                $parts = explode(';', $photoData);
+                                if (count($parts) > 0) {
+                                    $mimePart = str_replace('data:', '', $parts[0]);
+                                    $mimeType = $mimePart ?: 'image/jpeg';
+                                }
+                                
+                                // Extraire le base64 pur
+                                $base64Parts = explode(',', $photoData);
+                                if (count($base64Parts) > 1) {
+                                    $base64String = $base64Parts[1];
+                                }
+                            }
+                            
+                            // Créer la photo
+                            Photo::create([
+                                'signalement_id' => $signalement->id,
+                                'image_base64' => $base64String,
+                                'mime_type' => $mimeType,
+                                'nom_fichier' => 'photo_' . $signalement->id . '_' . ($index + 1) . '.jpg',
+                                'ordre' => $index
+                            ]);
+                        }
+                    }
+                }
 
                 // Créer l'historique si présent
                 if (isset($data['historique']) && is_array($data['historique'])) {
@@ -946,13 +981,17 @@ class FirebaseSyncService
                 }
 
                 $synced++;
-                Log::info("Signalement Firebase importé localement", ['id' => $doc['id']]);
+                Log::info("Signalement Firebase importé localement avec photos", [
+                    'id' => $doc['id'],
+                    'photos_count' => isset($data['photos']) ? count($data['photos']) : 0
+                ]);
 
             } catch (\Exception $e) {
                 $failed++;
                 Log::error("Erreur import signalement Firebase", [
                     'id' => $doc['id'],
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
             }
         }

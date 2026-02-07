@@ -41,4 +41,8 @@ class Signalement extends Model
     {
         return $this->hasMany(HistoSignalement::class);
     }
+    public function photos()
+    {
+        return $this->hasMany(Photo::class);
+    }
 }

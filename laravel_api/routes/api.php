@@ -28,7 +28,7 @@ Route::get('/firebase-test', [TestFirebaseController::class, 'test']);
 Route::get('/firebase-check', [TestFirebaseController::class, 'checkConnection']);
 Route::get('/firebase-simple', [TestFirebaseController::class, 'simpleTest']);
 Route::get('/firebase-basic-test', [TestFirebaseController::class, 'testBasicFirestore']);
-
+Route::get('/firebase-documents', [TestFirebaseController::class, 'getDocuments']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
@@ -48,9 +48,6 @@ Route::middleware(['auth:api'])->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
-
-
-
     // Route admin seulement
     Route::middleware(['role:manager'])->group(function () {
         Route::post('/reset-tentatives', [AuthController::class, 'resetTentatives']);

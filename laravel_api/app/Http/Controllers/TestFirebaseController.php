@@ -113,4 +113,49 @@ class TestFirebaseController extends Controller
             ], 500);
         }
     }
+
+    public function getDocuments(Request $request)
+    {
+        try {
+            // Valider la présence du paramètre collection
+            $request->validate([
+                'collection' => 'required|string|min:1'
+            ]);
+            
+            $collectionName = $request->query('collection');
+            $service = new FirebaseSimpleService();
+            
+            // Tester la connexion d'abord
+            $connectionTest = $service->testConnection();
+            if (!$connectionTest['success']) {
+                throw new \Exception('Échec de la connexion: ' . $connectionTest['error']);
+            }
+            
+            // Récupérer les documents de la collection spécifiée
+            $documents = $service->getDocuments($collectionName);
+            
+            return response()->json([
+                'success' => true,
+                'collection' => $collectionName,
+                'documents_count' => count($documents),
+                'documents' => $documents,
+                'connection_info' => $connectionTest
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Le paramètre "collection" est requis',
+                'example_url' => url('/firebase-documents?collection=nom_de_votre_collection')
+            ], 400);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'collection' => $collectionName ?? 'non spécifiée',
+                'trace' => env('APP_DEBUG') ? $e->getTraceAsString() : null
+            ], 500);
+        }
+    }
 }
