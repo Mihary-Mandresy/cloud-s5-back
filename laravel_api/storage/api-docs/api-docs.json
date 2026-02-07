@@ -442,6 +442,455 @@
                     }
                 ]
             }
+        },
+        "/api/signalements": {
+            "get": {
+                "tags": [
+                    "Signalements"
+                ],
+                "summary": "Récupérer tous les signalements",
+                "description": "Retourne la liste de tous les signalements avec pagination",
+                "operationId": "getSignalements",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Numéro de page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Nombre d'éléments par page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    },
+                    {
+                        "name": "statut",
+                        "in": "query",
+                        "description": "Filtrer par statut (1=nouveau, 2=en_cours, 3=termine)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Rechercher dans le titre ou la description",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Liste des signalements",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Signalement"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Signalements"
+                ],
+                "summary": "Créer un nouveau signalement",
+                "description": "Crée un nouveau signalement et l'historique associé",
+                "operationId": "createSignalement",
+                "requestBody": {
+                    "description": "Données du signalement",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateSignalementRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Signalement créé avec succès",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Signalement"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/signalements/{id}": {
+            "get": {
+                "tags": [
+                    "Signalements"
+                ],
+                "summary": "Récupérer un signalement spécifique",
+                "description": "Retourne les détails d'un signalement avec son historique",
+                "operationId": "getSignalement",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID du signalement",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Détails du signalement",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/SignalementDetail"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Signalement non trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Signalements"
+                ],
+                "summary": "Mettre à jour un signalement",
+                "description": "Met à jour un signalement et crée un nouvel historique si le statut change",
+                "operationId": "updateSignalement",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID du signalement",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Données de mise à jour",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateSignalementRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Signalement mis à jour",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "$ref": "#/components/schemas/Signalement"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Signalement non trouvé",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Erreur de validation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/signalements/statistiques": {
+            "get": {
+                "tags": [
+                    "Signalements",
+                    "Statistiques"
+                ],
+                "summary": "Récupérer les statistiques des signalements",
+                "description": "Retourne les statistiques globales (nombre, surface, budget, avancement)",
+                "operationId": "getStatistiques",
+                "responses": {
+                    "200": {
+                        "description": "Statistiques récupérées",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "total_signalements": {
+                                                    "type": "integer"
+                                                },
+                                                "par_statut": {
+                                                    "type": "object"
+                                                },
+                                                "total_surface": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "total_budget": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "moyenne_avancement": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                },
+                                                "budget_utilise": {
+                                                    "type": "number",
+                                                    "format": "float"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Non authentifié",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/signalements/statistiques/avancement-par-entreprise": {
+            "get": {
+                "tags": [
+                    "Signalements",
+                    "Statistiques"
+                ],
+                "summary": "Récupérer l'avancement par entreprise",
+                "description": "Retourne les statistiques d'avancement groupées par entreprise responsable",
+                "operationId": "getAvancementParEntreprise",
+                "responses": {
+                    "200": {
+                        "description": "Statistiques par entreprise",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "entreprise": {
+                                                        "type": "string"
+                                                    },
+                                                    "total_signalements": {
+                                                        "type": "integer"
+                                                    },
+                                                    "moyenne_avancement": {
+                                                        "type": "number"
+                                                    },
+                                                    "total_budget": {
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -573,6 +1022,282 @@
                     }
                 },
                 "type": "object"
+            },
+            "Signalement": {
+                "required": [
+                    "id",
+                    "titre",
+                    "latitude",
+                    "longitude",
+                    "utilisateur_id"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "titre": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "example": "Route dégradée"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Nid de poule important",
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 48.8566
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 2.3522
+                    },
+                    "statut": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "surface_m2": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5.5,
+                        "nullable": true
+                    },
+                    "budget": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1500,
+                        "nullable": true
+                    },
+                    "avancement": {
+                        "type": "integer",
+                        "example": 50,
+                        "nullable": true
+                    },
+                    "entreprise_responsable": {
+                        "type": "string",
+                        "example": "Entreprise A",
+                        "nullable": true
+                    },
+                    "utilisateur_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "synchronise_firebase": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "date_creation": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "date_modification": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SignalementDetail": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "titre": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "example": "Route dégradée"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Nid de poule important",
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 48.8566
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 2.3522
+                    },
+                    "statut": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "surface_m2": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5.5,
+                        "nullable": true
+                    },
+                    "budget": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1500,
+                        "nullable": true
+                    },
+                    "avancement": {
+                        "type": "integer",
+                        "example": 50,
+                        "nullable": true
+                    },
+                    "entreprise_responsable": {
+                        "type": "string",
+                        "example": "Entreprise A",
+                        "nullable": true
+                    },
+                    "utilisateur_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "synchronise_firebase": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "date_creation": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "date_modification": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "utilisateur": {
+                        "$ref": "#/components/schemas/User"
+                    },
+                    "historiques": {
+                        "type": "array",
+                        "items": {
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "signalement_id": {
+                                    "type": "integer"
+                                },
+                                "statut": {
+                                    "type": "integer"
+                                },
+                                "date_chargement": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "created_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "updated_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "CreateSignalementRequest": {
+                "required": [
+                    "titre",
+                    "latitude",
+                    "longitude"
+                ],
+                "properties": {
+                    "titre": {
+                        "type": "string",
+                        "maxLength": 200,
+                        "example": "Route dégradée"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Nid de poule important",
+                        "nullable": true
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 48.8566
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 2.3522
+                    },
+                    "statut": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "surface_m2": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5.5,
+                        "nullable": true
+                    },
+                    "budget": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1500,
+                        "nullable": true
+                    },
+                    "avancement": {
+                        "type": "integer",
+                        "example": 0,
+                        "nullable": true
+                    },
+                    "entreprise_responsable": {
+                        "type": "string",
+                        "example": "Entreprise A",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "UpdateSignalementRequest": {
+                "properties": {
+                    "titre": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "statut": {
+                        "type": "integer"
+                    },
+                    "surface_m2": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "budget": {
+                        "type": "number",
+                        "format": "float",
+                        "nullable": true
+                    },
+                    "avancement": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "entreprise_responsable": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "synchronise_firebase": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
             }
         },
         "securitySchemes": {
@@ -595,6 +1320,14 @@
         {
             "name": "Admin",
             "description": "Admin"
+        },
+        {
+            "name": "Signalements",
+            "description": "Signalements"
+        },
+        {
+            "name": "Statistiques",
+            "description": "Statistiques"
         }
     ]
 }

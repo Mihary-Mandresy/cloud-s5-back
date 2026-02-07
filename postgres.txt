@@ -1,0 +1,3 @@
+docker exec -it laravel_postgres bash
+
+psql -U laravel_user -d laravel_db

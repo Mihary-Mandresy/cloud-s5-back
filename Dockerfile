@@ -35,3 +35,10 @@ RUN mkdir -p /var/www/html/storage/logs && \
     chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 WORKDIR /var/www/html
+
+# Créer le script d'entrée
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["apache2-foreground"]

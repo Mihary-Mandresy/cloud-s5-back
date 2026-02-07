@@ -9,6 +9,91 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 
+#[OA\Schema(
+    schema: 'Signalement',
+    required: ['id', 'titre', 'latitude', 'longitude', 'utilisateur_id'],
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'titre', type: 'string', maxLength: 200, example: 'Route dégradée'),
+        new OA\Property(property: 'description', type: 'string', nullable: true, example: 'Nid de poule important'),
+        new OA\Property(property: 'latitude', type: 'number', format: 'float', example: 48.8566),
+        new OA\Property(property: 'longitude', type: 'number', format: 'float', example: 2.3522),
+        new OA\Property(property: 'statut', type: 'integer', example: 1),
+        new OA\Property(property: 'surface_m2', type: 'number', format: 'float', nullable: true, example: 5.5),
+        new OA\Property(property: 'budget', type: 'number', format: 'float', nullable: true, example: 1500.00),
+        new OA\Property(property: 'avancement', type: 'integer', nullable: true, example: 50),
+        new OA\Property(property: 'entreprise_responsable', type: 'string', nullable: true, example: 'Entreprise A'),
+        new OA\Property(property: 'utilisateur_id', type: 'integer', example: 1),
+        new OA\Property(property: 'synchronise_firebase', type: 'boolean', example: false),
+        new OA\Property(property: 'date_creation', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'date_modification', type: 'string', format: 'date-time', nullable: true)
+    ]
+)]
+#[OA\Schema(
+    schema: 'SignalementDetail',
+    properties: [
+        new OA\Property(property: 'id', type: 'integer', example: 1),
+        new OA\Property(property: 'titre', type: 'string', maxLength: 200, example: 'Route dégradée'),
+        new OA\Property(property: 'description', type: 'string', nullable: true, example: 'Nid de poule important'),
+        new OA\Property(property: 'latitude', type: 'number', format: 'float', example: 48.8566),
+        new OA\Property(property: 'longitude', type: 'number', format: 'float', example: 2.3522),
+        new OA\Property(property: 'statut', type: 'integer', example: 1),
+        new OA\Property(property: 'surface_m2', type: 'number', format: 'float', nullable: true, example: 5.5),
+        new OA\Property(property: 'budget', type: 'number', format: 'float', nullable: true, example: 1500.00),
+        new OA\Property(property: 'avancement', type: 'integer', nullable: true, example: 50),
+        new OA\Property(property: 'entreprise_responsable', type: 'string', nullable: true, example: 'Entreprise A'),
+        new OA\Property(property: 'utilisateur_id', type: 'integer', example: 1),
+        new OA\Property(property: 'synchronise_firebase', type: 'boolean', example: false),
+        new OA\Property(property: 'date_creation', type: 'string', format: 'date-time'),
+        new OA\Property(property: 'date_modification', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(
+            property: 'utilisateur',
+            ref: '#/components/schemas/User'
+        ),
+        new OA\Property(
+            property: 'historiques',
+            type: 'array',
+            items: new OA\Items(
+                properties: [
+                    new OA\Property(property: 'id', type: 'integer'),
+                    new OA\Property(property: 'signalement_id', type: 'integer'),
+                    new OA\Property(property: 'statut', type: 'integer'),
+                    new OA\Property(property: 'date_chargement', type: 'string', format: 'date-time'),
+                    new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),
+                    new OA\Property(property: 'updated_at', type: 'string', format: 'date-time')
+                ]
+            )
+        )
+    ]
+)]
+#[OA\Schema(
+    schema: 'CreateSignalementRequest',
+    required: ['titre', 'latitude', 'longitude'],
+    properties: [
+        new OA\Property(property: 'titre', type: 'string', maxLength: 200, example: 'Route dégradée'),
+        new OA\Property(property: 'description', type: 'string', nullable: true, example: 'Nid de poule important'),
+        new OA\Property(property: 'latitude', type: 'number', format: 'float', example: 48.8566),
+        new OA\Property(property: 'longitude', type: 'number', format: 'float', example: 2.3522),
+        new OA\Property(property: 'statut', type: 'integer', example: 1),
+        new OA\Property(property: 'surface_m2', type: 'number', format: 'float', nullable: true, example: 5.5),
+        new OA\Property(property: 'budget', type: 'number', format: 'float', nullable: true, example: 1500.00),
+        new OA\Property(property: 'avancement', type: 'integer', nullable: true, example: 0),
+        new OA\Property(property: 'entreprise_responsable', type: 'string', nullable: true, example: 'Entreprise A')
+    ]
+)]
+#[OA\Schema(
+    schema: 'UpdateSignalementRequest',
+    properties: [
+        new OA\Property(property: 'titre', type: 'string', maxLength: 200),
+        new OA\Property(property: 'description', type: 'string', nullable: true),
+        new OA\Property(property: 'statut', type: 'integer'),
+        new OA\Property(property: 'surface_m2', type: 'number', format: 'float', nullable: true),
+        new OA\Property(property: 'budget', type: 'number', format: 'float', nullable: true),
+        new OA\Property(property: 'avancement', type: 'integer', nullable: true),
+        new OA\Property(property: 'entreprise_responsable', type: 'string', nullable: true),
+        new OA\Property(property: 'synchronise_firebase', type: 'boolean')
+    ]
+)]
 class SignalementController extends Controller
 {
 

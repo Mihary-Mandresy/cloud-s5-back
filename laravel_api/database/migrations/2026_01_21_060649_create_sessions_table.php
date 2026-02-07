@@ -6,55 +6,67 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        // Vérifier si la table n'existe pas déjà
         if (!Schema::hasTable('sessions')) {
             Schema::create('sessions', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('utilisateur_id')
+                $table->string('id')->primary();
+                $table->foreignId('user_id')
                     ->nullable()
-                    ->constrained('utilisateurs')
+                    ->constrained()
                     ->onDelete('cascade');
-                $table->text('token_session')->unique();
-                $table->timestamp('date_creation')->useCurrent();
-                $table->timestamp('date_expiration')->nullable();
-                $table->text('payload')->nullable();
-                $table->integer('last_activity')->nullable();
                 $table->string('ip_address', 45)->nullable();
                 $table->text('user_agent')->nullable();
+                $table->text('payload');
+                $table->integer('last_activity')->index();
                 
-                // Index pour les performances
-                $table->index('utilisateur_id');
-                $table->index('token_session');
-                $table->index('date_expiration');
+                $table->index('user_id');
             });
         } else {
-            // Si la table existe déjà, ajouter les colonnes manquantes
             Schema::table('sessions', function (Blueprint $table) {
-                // Vérifier et ajouter les colonnes si elles n'existent pas
-                if (!Schema::hasColumn('sessions', 'payload')) {
-                    $table->text('payload')->nullable()->after('date_expiration');
+                if (!Schema::hasColumn('sessions', 'id')) {
+                    $table->string('id')->primary();
+                } else {
+                    if (Schema::hasColumn('sessions', 'token_session')) {
+                        $table->renameColumn('token_session', 'id');
+                        $table->string('id')->primary()->change();
+                    }
                 }
-                if (!Schema::hasColumn('sessions', 'last_activity')) {
-                    $table->integer('last_activity')->nullable()->after('payload');
+                
+                if (Schema::hasColumn('sessions', 'utilisateur_id') && !Schema::hasColumn('sessions', 'user_id')) {
+                    $table->renameColumn('utilisateur_id', 'user_id');
                 }
+                
+                $columnsToDrop = ['id_seq', 'date_creation', 'date_expiration'];
+                foreach ($columnsToDrop as $column) {
+                    if (Schema::hasColumn('sessions', $column)) {
+                        $table->dropColumn($column);
+                    }
+                }
+                
                 if (!Schema::hasColumn('sessions', 'ip_address')) {
-                    $table->string('ip_address', 45)->nullable()->after('last_activity');
+                    $table->string('ip_address', 45)->nullable();
                 }
                 if (!Schema::hasColumn('sessions', 'user_agent')) {
-                    $table->text('user_agent')->nullable()->after('ip_address');
+                    $table->text('user_agent')->nullable();
+                }
+                if (!Schema::hasColumn('sessions', 'payload')) {
+                    $table->text('payload');
+                }
+                if (!Schema::hasColumn('sessions', 'last_activity')) {
+                    $table->integer('last_activity')->index();
+                }
+                
+                if (Schema::hasColumn('sessions', 'user_id')) {
+                    $table->foreign('user_id')
+                        ->references('id')
+                        ->on('users')
+                        ->onDelete('cascade');
                 }
             });
         }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('sessions');
