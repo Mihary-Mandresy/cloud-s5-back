@@ -152,15 +152,15 @@ class FirebaseSyncService
     private function compareSignalements()
     {
         $localSignalements = Signalement::all(['id', 'titre', 'description'])->toArray();
-        
+
         $firebaseDocs = $this->getFirebaseDocuments('signalements');
-        
+
         $localForComparison = [];
         foreach ($localSignalements as $signalement) {
             $key = strtolower(trim($signalement['titre'])) . '|' . strtolower(trim($signalement['description']));
             $localForComparison[$key] = $signalement;
         }
-        
+
         $firebaseForComparison = [];
         foreach ($firebaseDocs as $doc) {
             $data = $doc['data'] ?? $doc;
@@ -169,21 +169,21 @@ class FirebaseSyncService
             $key = $titre . '|' . $description;
             $firebaseForComparison[$key] = $doc;
         }
-        
+
         $missingInFirebase = [];
         foreach ($localForComparison as $key => $signalement) {
             if (!isset($firebaseForComparison[$key])) {
                 $missingInFirebase[] = $signalement;
             }
         }
-        
+
         $missingInLocal = [];
         foreach ($firebaseForComparison as $key => $doc) {
             if (!isset($localForComparison[$key])) {
                 $missingInLocal[] = $doc;
             }
         }
-        
+
         return [
             'local_count' => count($localSignalements),
             'firebase_count' => count($firebaseDocs),
@@ -501,32 +501,52 @@ class FirebaseSyncService
 
         foreach ($missingInFirebase as $signalement) {
             try {
-                // Récupérer le signalement complet
-                $signalementModel = Signalement::with(['historiques', 'utilisateur'])
+                // Récupérer le signalement complet avec les relations
+                $signalementModel = Signalement::with(['photos', 'utilisateur'])
                     ->find($signalement['id']);
 
                 if (!$signalementModel) continue;
 
+                // Préparer les données dans le format Firestore
                 $signalementData = [
                     'titre' => $signalementModel->titre,
                     'description' => $signalementModel->description,
-                    'latitude' => $signalementModel->latitude,
-                    'longitude' => $signalementModel->longitude,
-                    'date_creation' => $signalementModel->date_creation?->toISOString(),
-                    'date_modification' => $signalementModel->date_modification?->toISOString(),
-                    'statut' => $signalementModel->statut,
-                    'surface_m2' => $signalementModel->surface_m2,
-                    'budget' => $signalementModel->budget,
-                    'avancement' => $signalementModel->avancement,
+                    'position' => [
+                        'latitude' => (float)$signalementModel->latitude,
+                        'longitude' => (float)$signalementModel->longitude
+                    ],
+                    'statut' => (int)$signalementModel->statut,
+                    'surface_m2' => $signalementModel->surface_m2 ? (int)$signalementModel->surface_m2 : null,
+                    'budget' => $signalementModel->budget ? (int)$signalementModel->budget : null,
+                    'avancement' => (int)$signalementModel->avancement,
                     'entreprise_responsable' => $signalementModel->entreprise_responsable,
-                    'utilisateur_id' => (string) $signalementModel->utilisateur_id,
-                    'created_at' => $signalementModel->created_at?->toISOString(),
-                    'updated_at' => $signalementModel->updated_at?->toISOString()
+                    'utilisateur_id' => $signalementModel->utilisateur->firebase_uid ?? '',
+                    'userEmail' => $signalementModel->utilisateur->email ?? '',
+                    'synchronise_firebase' => true,
+                    'photos' => [],
+                    'date_creation' => ($signalementModel->date_creation ?? $signalementModel->created_at)?->toIso8601String(),
+                    'date_modification' => ($signalementModel->date_modification ?? $signalementModel->updated_at)?->toIso8601String()
                 ];
 
-                // IMPORTANT: Laisser Firebase générer un ID auto
+                // Récupérer les photos en base64
+                if ($signalementModel->photos && $signalementModel->photos->count() > 0) {
+                    foreach ($signalementModel->photos as $photo) {
+                        $base64String = $photo->image_base64;
+                        $mimeType = $photo->mime_type ?? 'image/jpeg';
+
+                        // Formater en base64 avec type MIME si nécessaire
+                        if (strpos($base64String, 'data:') === 0) {
+                            $signalementData['photos'][] = $base64String;
+                        } else {
+                            $signalementData['photos'][] = "data:{$mimeType};base64,{$base64String}";
+                        }
+                    }
+                }
+
+                // Laisser Firebase générer un ID auto
                 $this->createFirebaseDocumentAutoId('signalements', $signalementData);
 
+                // Mettre à jour localement
                 $signalementModel->update(['synchronise_firebase' => true]);
 
                 $synced++;
@@ -557,14 +577,64 @@ class FirebaseSyncService
         $response = \Illuminate\Support\Facades\Http::withToken($token)
             ->withHeaders(['Content-Type' => 'application/json'])
             ->post($url, [
-                'fields' => $this->formatForFirestore($data)
+                'fields' => $this->formatForFirestoreNew($data)
             ]);
 
         if (!$response->successful()) {
+            Log::error("Erreur création document Firestore", [
+                'response' => $response->body(),
+                'data' => $data
+            ]);
             throw new \Exception('Erreur création document: ' . $response->body());
         }
 
         return $response->json();
+    }
+
+    private function formatForFirestoreNew($data)
+    {
+        $fields = [];
+
+        foreach ($data as $key => $value) {
+            $fields[$key] = $this->formatSingleValueForFirestore($value);
+        }
+
+        return $fields;
+    }
+
+    private function formatSingleValueForFirestore($value)
+    {
+        if ($value === null) {
+            return ['nullValue' => null];
+        } elseif (is_string($value)) {
+            return ['stringValue' => $value];
+        } elseif (is_int($value)) {
+            return ['integerValue' => (string)$value];
+        } elseif (is_float($value)) {
+            return ['doubleValue' => $value];
+        } elseif (is_bool($value)) {
+            return ['booleanValue' => $value];
+        } elseif (is_array($value)) {
+            // Vérifier si c'est un tableau associatif (pour "position")
+            if (isset($value['latitude']) || isset($value['longitude']) ||
+                array_keys($value) !== range(0, count($value) - 1)) {
+                // C'est un map (objet)
+                $mapFields = [];
+                foreach ($value as $mapKey => $mapValue) {
+                    $mapFields[$mapKey] = $this->formatSingleValueForFirestore($mapValue);
+                }
+                return ['mapValue' => ['fields' => $mapFields]];
+            } else {
+                // C'est un array simple (pour "photos")
+                $arrayValues = [];
+                foreach ($value as $arrayItem) {
+                    $arrayValues[] = $this->formatSingleValueForFirestore($arrayItem);
+                }
+                return ['arrayValue' => ['values' => $arrayValues]];
+            }
+        } else {
+            return ['stringValue' => (string)$value];
+        }
     }
 
     private function syncLocalEntreprisesToFirebase()
@@ -907,19 +977,36 @@ class FirebaseSyncService
             try {
                 $data = $doc['data'] ?? $doc;
 
+                // Extraire les données position
+                $latitude = 0;
+                $longitude = 0;
+
+                if (isset($data['position']) && is_array($data['position'])) {
+                    $latitude = $data['position']['latitude'] ?? 0;
+                    $longitude = $data['position']['longitude'] ?? 0;
+                } else {
+                    $latitude = $data['latitude'] ?? 0;
+                    $longitude = $data['longitude'] ?? 0;
+                }
+
+                // Trouver l'utilisateur par firebase_uid ou email
                 $utilisateurId = $data['utilisateur_id'] ?? null;
+                $userEmail = $data['userEmail'] ?? null;
                 $utilisateur = null;
 
                 if ($utilisateurId) {
-                    $utilisateur = Utilisateur::where('firebase_uid', $utilisateurId)
-                        ->first();
+                    $utilisateur = Utilisateur::where('firebase_uid', $utilisateurId)->first();
+                }
+
+                if (!$utilisateur && $userEmail) {
+                    $utilisateur = Utilisateur::where('email', $userEmail)->first();
                 }
 
                 $signalement = Signalement::create([
                     'titre' => $data['titre'] ?? '',
                     'description' => $data['description'] ?? '',
-                    'latitude' => $data['position']['latitude'] ?? $data['latitude'] ?? 0,
-                    'longitude' => $data['position']['longitude'] ?? $data['longitude'] ?? 0,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
                     'date_creation' => isset($data['date_creation']) ?
                         \Carbon\Carbon::parse($data['date_creation']) : now(),
                     'date_modification' => isset($data['date_modification']) ?
@@ -937,26 +1024,23 @@ class FirebaseSyncService
                 if (isset($data['photos']) && is_array($data['photos'])) {
                     foreach ($data['photos'] as $index => $photoData) {
                         if (!empty($photoData)) {
-                            // Extraire le type MIME si présent dans le base64
-                            $mimeType = 'image/jpeg'; // Par défaut
+                            // Extraire le base64 pur (avec ou sans data: prefix)
                             $base64String = $photoData;
-                            
+                            $mimeType = 'image/jpeg';
+
                             if (strpos($photoData, 'data:') === 0) {
-                                // Extraire le type MIME: data:image/jpeg;base64,/9j/4AAQ...
                                 $parts = explode(';', $photoData);
                                 if (count($parts) > 0) {
                                     $mimePart = str_replace('data:', '', $parts[0]);
                                     $mimeType = $mimePart ?: 'image/jpeg';
                                 }
-                                
-                                // Extraire le base64 pur
+
                                 $base64Parts = explode(',', $photoData);
                                 if (count($base64Parts) > 1) {
                                     $base64String = $base64Parts[1];
                                 }
                             }
-                            
-                            // Créer la photo
+
                             Photo::create([
                                 'signalement_id' => $signalement->id,
                                 'image_base64' => $base64String,
@@ -968,20 +1052,8 @@ class FirebaseSyncService
                     }
                 }
 
-                // Créer l'historique si présent
-                if (isset($data['historique']) && is_array($data['historique'])) {
-                    foreach ($data['historique'] as $histo) {
-                        HistoSignalement::create([
-                            'signalement_id' => $signalement->id,
-                            'statut' => $histo['statut'] ?? 1,
-                            'date_chargement' => isset($histo['date_chargement']) ?
-                                \Carbon\Carbon::parse($histo['date_chargement']) : now()
-                        ]);
-                    }
-                }
-
                 $synced++;
-                Log::info("Signalement Firebase importé localement avec photos", [
+                Log::info("Signalement Firebase importé localement", [
                     'id' => $doc['id'],
                     'photos_count' => isset($data['photos']) ? count($data['photos']) : 0
                 ]);
@@ -990,8 +1062,7 @@ class FirebaseSyncService
                 $failed++;
                 Log::error("Erreur import signalement Firebase", [
                     'id' => $doc['id'],
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'error' => $e->getMessage()
                 ]);
             }
         }
