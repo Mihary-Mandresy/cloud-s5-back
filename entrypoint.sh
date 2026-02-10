@@ -60,5 +60,18 @@ cd "$LARAVEL_PATH" && php artisan config:clear
 cd "$LARAVEL_PATH" && php artisan route:clear
 cd "$LARAVEL_PATH" && php artisan view:clear
 
+# Exécuter les migrations
+echo "Exécution des migrations..."
+cd "$LARAVEL_PATH" && php artisan migrate --force
+
+# Exécuter les seeders (optionnel - décommentez si nécessaire)
+echo "Exécution des seeders..."
+cd "$LARAVEL_PATH" && php artisan db:seed --force
+
+# Optimiser le cache après migrations
+echo "Optimisation du cache..."
+cd "$LARAVEL_PATH" && php artisan optimize
+# === JUSQU'ICI ===
+
 echo "=== Démarrage d'Apache ==="
 exec "$@"
