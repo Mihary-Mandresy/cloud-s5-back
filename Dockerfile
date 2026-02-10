@@ -31,19 +31,26 @@ RUN mkdir -p /var/www/html && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 777 /var/www/html
 
-# Copier les fichiers du projet (sans vendor)
+# Copier entrypoint.sh dans le bon emplacement AVANT DE CHANGER LE WORKDIR
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# # Définir le propriétaire et les permissions
-RUN chown -R www-data:www-data /var/www/html && \
-chmod -R 777 /var/www/html
+# Vérifier que le fichier est bien copié et corriger les fins de ligne Windows
+RUN if [ -f /usr/local/bin/entrypoint.sh ]; then \
+    echo "Entrypoint trouvé, correction des fins de ligne..."; \
+    sed -i 's/\r$//' /usr/local/bin/entrypoint.sh; \
+    chmod +x /usr/local/bin/entrypoint.sh; \
+    ls -la /usr/local/bin/entrypoint.sh; \
+    echo "Premières lignes du entrypoint:"; \
+    head -5 /usr/local/bin/entrypoint.sh; \
+    else \
+    echo "ERREUR: entrypoint.sh non trouvé!"; \
+    ls -la /; \
+    ls -la /usr/local/bin/; \
+    fi
 
-COPY . /var/www/html/
-
+# Définir le répertoire de travail
 WORKDIR /var/www/html
 
-# Créer le script d'entrée amélioré
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
+# Définir l'entrée
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["apache2-foreground"]
