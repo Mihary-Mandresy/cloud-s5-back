@@ -34,9 +34,9 @@ RUN mkdir -p /var/www/html && \
 # Copier les fichiers du projet (sans vendor)
 COPY . /var/www/html/
 
-# Définir le propriétaire et les permissions
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+# # Définir le propriétaire et les permissions
+# RUN chown -R www-data:www-data /var/www/html && \
+#     chmod -R 755 /var/www/html
 
 WORKDIR /var/www/html
 

@@ -20,14 +20,8 @@ if [ ! -f "/var/www/html/.env" ] && [ -f "/var/www/html/.env.example" ]; then
 fi
 
 # Générer la clé Laravel si nécessaire
-if [ -f "/var/www/html/artisan" ]; then
-    echo "Génération de la clé Laravel..."
-    php artisan key:generate --force
-    
-    # Migration de la base de données (optionnel)
-    # echo "Exécution des migrations..."
-    # php artisan migrate --force
-fi
+echo "Génération de la clé Laravel..."
+php artisan key:generate --force
 
 # Fixer les permissions
 echo "Configuration des permissions..."
