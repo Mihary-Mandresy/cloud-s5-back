@@ -29,14 +29,15 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
 # Créer la structure de répertoires
 RUN mkdir -p /var/www/html && \
     chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+    chmod -R 777 /var/www/html
 
 # Copier les fichiers du projet (sans vendor)
-COPY . /var/www/html/
 
 # # Définir le propriétaire et les permissions
-# RUN chown -R www-data:www-data /var/www/html && \
-#     chmod -R 755 /var/www/html
+RUN chown -R www-data:www-data /var/www/html && \
+chmod -R 777 /var/www/html
+
+COPY . /var/www/html/
 
 WORKDIR /var/www/html
 
