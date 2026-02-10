@@ -1,0 +1,7 @@
+.git/
+.gitignore
+.vscode/
+.idea/
+docker-compose.override.yml
+README.md
+*.md
